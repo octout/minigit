@@ -21,7 +21,7 @@ pub fn add_index(path: &str, hash_hex: &String) -> Result<(), String> {
     match index_vec.iter_mut().find(|idx| idx.path == path) {
         Some(index) => {
             index.hex = hash_hex.clone();
-        },
+        }
         None => {
             index_vec.push(index_readed::IndexReaded::new(path, hash_hex, "create"));
         }

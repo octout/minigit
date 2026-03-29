@@ -5,7 +5,6 @@ use std::fs;
 use std::io::Write;
 
 pub fn write_object(blob: &Vec<u8>) -> Result<String, String> {
-
     let hash_hex = Sha1::digest(&blob)
         .iter()
         .map(|b| format!("{:02x}", b))
@@ -26,4 +25,11 @@ pub fn write_object(blob: &Vec<u8>) -> Result<String, String> {
     fs::write(&file_path, compressed).map_err(|e| format!("failed to write object: {}", e))?;
 
     return Ok(hash_hex);
+}
+
+pub fn hex_to_bytes(hex: &str) -> Vec<u8> {
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect()
 }

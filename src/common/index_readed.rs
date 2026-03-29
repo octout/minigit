@@ -51,7 +51,8 @@ pub fn write_index(index_vec: &Vec<IndexReaded>) -> Result<(), String> {
         let index_content = format!("{} ./{} {}\n", index.status, index.path, index.hex);
         new_index.push_str(&index_content);
     }
-    std::fs::write("./.minigit/index", new_index).map_err(|e| format!("failed to write index file: {}", e))?;
+    std::fs::write("./.minigit/index", new_index)
+        .map_err(|e| format!("failed to write index file: {}", e))?;
     return Ok(());
 }
 
