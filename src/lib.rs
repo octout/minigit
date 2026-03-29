@@ -1,2 +1,2 @@
-pub mod init;
 pub mod common;
+pub mod init;

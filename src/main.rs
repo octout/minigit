@@ -1,6 +1,6 @@
-use std::env;
-use minigit::init;
 use minigit::common;
+use minigit::init;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -39,5 +39,4 @@ fn main() {
     }
 
     println!("不明なコマンド: {}", args[1]);
-
 }
