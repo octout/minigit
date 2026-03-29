@@ -1,3 +1,4 @@
+use minigit::add;
 use minigit::common;
 use minigit::init;
 use std::env;
@@ -33,6 +34,32 @@ fn main() {
             Err(e) => {
                 eprintln!("{}", e);
                 return;
+            }
+        }
+        return;
+    }
+
+    if args[1] == "add" {
+        if args.len() < 3 {
+            eprintln!("使い方: minigit add <ファイルパス>");
+            std::process::exit(1);
+        }
+        let path = &args[2];
+        match add::add_execute::add_file(path) {
+            Ok(hash_hex) => {
+                match add::add_execute::add_index(path, &hash_hex) {
+                    Ok(_) => {
+                        println!("正常にインデックスに追加されました: {}", path);
+                    }
+                    Err(e) => {
+                        eprintln!("インデックスの追加に失敗しました: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("ファイルの追加に失敗しました: {}", e);
+                std::process::exit(1);
             }
         }
         return;

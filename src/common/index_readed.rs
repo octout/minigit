@@ -45,6 +45,16 @@ pub fn read_index() -> Result<Vec<IndexReaded>, String> {
     return Ok(index_vec);
 }
 
+pub fn write_index(index_vec: &Vec<IndexReaded>) -> Result<(), String> {
+    let mut new_index = "".to_string();
+    for index in index_vec {
+        let index_content = format!("{} ./{} {}\n", index.status, index.path, index.hex);
+        new_index.push_str(&index_content);
+    }
+    std::fs::write("./.minigit/index", new_index).map_err(|e| format!("failed to write index file: {}", e))?;
+    return Ok(());
+}
+
 pub fn index_display(indexs: &Vec<IndexReaded>) {
     let mut remove = 0;
     let mut change = 0;
