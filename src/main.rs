@@ -1,4 +1,5 @@
 use minigit::add;
+use minigit::commit;
 use minigit::common;
 use minigit::init;
 use std::env;
@@ -57,6 +58,24 @@ fn main() {
             },
             Err(e) => {
                 eprintln!("ファイルの追加に失敗しました: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if args[1] == "commit" {
+        if args.len() < 3 {
+            eprintln!("使い方: minigit commit <コミットメッセージ>");
+            std::process::exit(1);
+        }
+        let message = &args[2];
+        match commit::commit_execute::commit(message) {
+            Ok(_) => {
+                println!("正常にコミットされました。");
+            }
+            Err(e) => {
+                eprintln!("コミットに失敗しました: {}", e);
                 std::process::exit(1);
             }
         }

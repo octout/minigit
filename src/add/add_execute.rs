@@ -1,7 +1,7 @@
 use std::fs;
 
+use crate::common::git_object;
 use crate::common::index_readed;
-use crate::common::object;
 
 pub fn add_file(path: &str) -> Result<String, String> {
     let content = fs::read(path).map_err(|e| format!("failed to read file: {}", e))?;
@@ -9,7 +9,7 @@ pub fn add_file(path: &str) -> Result<String, String> {
     let mut blob = header.into_bytes();
     blob.extend(&content);
 
-    let hash_hex = object::write_object(&blob)?;
+    let hash_hex = git_object::write_object(&blob)?;
     return Ok(hash_hex);
 }
 
