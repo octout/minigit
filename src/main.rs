@@ -82,5 +82,39 @@ fn main() {
         return;
     }
 
+    if args[1] == "cat-file" {
+        if args.len() < 4 {
+            eprintln!("使い方: minigit cat-file <オプション> <ハッシュ>");
+            std::process::exit(1);
+        }
+        let option = &args[2];
+        let hash = &args[3];
+        match option.as_str() {
+            "-t" => match common::helper::cat_file_type(hash) {
+                Ok(object_type) => {
+                    println!("{}", object_type);
+                }
+                Err(e) => {
+                    eprintln!("エラー: {}", e);
+                    std::process::exit(1);
+                }
+            },
+            "-p" => match common::helper::cat_file_print(hash) {
+                Ok(content) => {
+                    print!("{}", content);
+                }
+                Err(e) => {
+                    eprintln!("エラー: {}", e);
+                    std::process::exit(1);
+                }
+            },
+            _ => {
+                eprintln!("不明なオプション: {}", option);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     println!("不明なコマンド: {}", args[1]);
 }

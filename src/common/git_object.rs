@@ -2,7 +2,7 @@ use flate2::Compression;
 use flate2::write::ZlibEncoder;
 use sha1::{Digest, Sha1};
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 
 pub fn write_object(blob: &Vec<u8>) -> Result<String, String> {
     let hash_hex = Sha1::digest(&blob)
@@ -25,6 +25,33 @@ pub fn write_object(blob: &Vec<u8>) -> Result<String, String> {
     fs::write(&file_path, compressed).map_err(|e| format!("failed to write object: {}", e))?;
 
     return Ok(hash_hex);
+}
+
+pub fn read_object(hash_hex: &str) -> Result<(String, Vec<u8>), String> {
+    let file_path = format!(".minigit/objects/{}/{}", &hash_hex[..2], &hash_hex[2..]);
+    let compressed = fs::read(&file_path).map_err(|e| format!("failed to read object: {}", e))?;
+
+    let mut decoder = flate2::read::ZlibDecoder::new(&compressed[..]);
+    let mut decompressed = Vec::new();
+    decoder
+        .read_to_end(&mut decompressed)
+        .map_err(|e| format!("failed to decompress object: {}", e))?;
+
+    // Extract the object type and content
+    let null_pos = decompressed
+        .iter()
+        .position(|&b| b == 0)
+        .ok_or("invalid object format")?;
+    let header = String::from_utf8(decompressed[..null_pos].to_vec())
+        .map_err(|e| format!("invalid object header: {}", e))?;
+    let object_type = header
+        .split(' ')
+        .next()
+        .ok_or("invalid object header")?
+        .to_string();
+    let content = decompressed[null_pos + 1..].to_vec();
+
+    return Ok((object_type, content));
 }
 
 pub fn hex_to_bytes(hex: &str) -> Vec<u8> {

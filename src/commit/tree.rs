@@ -63,7 +63,7 @@ pub fn save_tree(tree: &Tree) -> Result<String, String> {
             }
             TreeEntry::Directory { name, children } => {
                 let sub_tree_hash = save_tree(children)?;
-                body.extend(format!("040000 {}\0", name).as_bytes());
+                body.extend(format!("40000 {}\0", name).as_bytes());
                 body.extend(git_object::hex_to_bytes(&sub_tree_hash));
             }
         }
