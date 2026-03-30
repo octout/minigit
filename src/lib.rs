@@ -1,4 +1,4 @@
-pub mod add;
-pub mod commit;
-pub mod common;
-pub mod init;
+pub mod commands;
+pub mod index;
+pub mod object;
+pub mod refs;

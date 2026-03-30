@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::common::git_object;
+use super::store;
 
 #[derive(Debug, PartialEq)]
 pub enum TreeEntry {
@@ -13,8 +13,6 @@ pub struct Tree {
     pub entries: Vec<TreeEntry>,
 }
 
-/// indexのフラットな (パス, ハッシュ) 一覧から木構造を組み立てる。
-/// 純粋関数。I/Oなし。
 pub fn build_tree(entries: Vec<(String, String)>) -> Tree {
     let mut file_entries: Vec<(String, String)> = Vec::new();
     let mut dir_entries: HashMap<String, Vec<(String, String)>> = HashMap::new();
@@ -51,7 +49,6 @@ pub fn build_tree(entries: Vec<(String, String)>) -> Tree {
     }
 }
 
-/// Tree構造を再帰的にオブジェクトとして保存し、ルートtreeのハッシュを返す。
 pub fn save_tree(tree: &Tree) -> Result<String, String> {
     let mut body: Vec<u8> = Vec::new();
 
@@ -59,12 +56,12 @@ pub fn save_tree(tree: &Tree) -> Result<String, String> {
         match entry {
             TreeEntry::File { name, hash } => {
                 body.extend(format!("100644 {}\0", name).as_bytes());
-                body.extend(git_object::hex_to_bytes(hash));
+                body.extend(store::hex_to_bytes(hash));
             }
             TreeEntry::Directory { name, children } => {
                 let sub_tree_hash = save_tree(children)?;
                 body.extend(format!("40000 {}\0", name).as_bytes());
-                body.extend(git_object::hex_to_bytes(&sub_tree_hash));
+                body.extend(store::hex_to_bytes(&sub_tree_hash));
             }
         }
     }
@@ -72,7 +69,67 @@ pub fn save_tree(tree: &Tree) -> Result<String, String> {
     let header = format!("tree {}\0", body.len());
     let mut tree_content = header.into_bytes();
     tree_content.extend(body);
-    git_object::write_object(&tree_content)
+    store::save_bytes(&tree_content)
+}
+
+#[derive(Debug)]
+pub struct ParsedEntry {
+    pub mode: String,
+    pub name: String,
+    pub hash: String,
+}
+
+pub fn parse_body(body: &[u8]) -> Result<Vec<ParsedEntry>, String> {
+    let mut entries = Vec::new();
+    let mut i = 0;
+    while i < body.len() {
+        let mode_end = body[i..]
+            .iter()
+            .position(|&b| b == b' ')
+            .ok_or("invalid tree entry format")?
+            + i;
+        let mode = String::from_utf8(body[i..mode_end].to_vec())
+            .map_err(|e| format!("invalid tree entry mode: {}", e))?;
+        i = mode_end + 1;
+
+        let name_end = body[i..]
+            .iter()
+            .position(|&b| b == 0)
+            .ok_or("invalid tree entry format")?
+            + i;
+        let name = String::from_utf8(body[i..name_end].to_vec())
+            .map_err(|e| format!("invalid tree entry name: {}", e))?;
+        i = name_end + 1;
+
+        if i + 20 > body.len() {
+            return Err("invalid tree entry format".to_string());
+        }
+        let hash = store::bytes_to_hex(&body[i..i + 20]);
+        i += 20;
+
+        entries.push(ParsedEntry { mode, name, hash });
+    }
+    Ok(entries)
+}
+
+pub fn collect_entries(tree_hash: &str) -> Result<Vec<(String, String)>, String> {
+    let (object_type, content) = store::load(tree_hash)?;
+    if object_type != "tree" {
+        return Err(format!("object {} is not a tree", tree_hash));
+    }
+    let entries = parse_body(&content)?;
+    let mut result: Vec<(String, String)> = Vec::new();
+    for entry in entries {
+        if entry.mode == "40000" {
+            let sub_entries = collect_entries(&entry.hash)?;
+            for (sub_name, sub_hash) in sub_entries {
+                result.push((format!("{}/{}", entry.name, sub_name), sub_hash));
+            }
+        } else {
+            result.push((entry.name, entry.hash));
+        }
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -163,15 +220,12 @@ mod tests {
         let entries = vec![("src/utils/helper.rs".to_string(), "hash_d".to_string())];
         let tree = build_tree(entries);
 
-        // ルート: src/
         assert_eq!(tree.entries.len(), 1);
         if let TreeEntry::Directory { name, children } = &tree.entries[0] {
             assert_eq!(name, "src");
-            // src/: utils/
             assert_eq!(children.entries.len(), 1);
             if let TreeEntry::Directory { name, children } = &children.entries[0] {
                 assert_eq!(name, "utils");
-                // utils/: helper.rs
                 assert_eq!(children.entries.len(), 1);
                 assert_eq!(
                     children.entries[0],
@@ -209,11 +263,9 @@ mod tests {
             .iter()
             .filter(|e| matches!(e, TreeEntry::Directory { .. }))
             .count();
-        // README.md + src/ + tests/
         assert_eq!(file_count, 1);
         assert_eq!(dir_count, 2);
 
-        // src/ の中: main.rs, lib.rs, utils/
         let src = tree
             .entries
             .iter()

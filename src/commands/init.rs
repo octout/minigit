@@ -1,6 +1,6 @@
 use std::fs;
 
-pub fn create_init_file() -> Result<(), String> {
+pub fn execute() -> Result<(), String> {
     fs::create_dir("./.minigit").map_err(|e| format!("failed to create .minigit: {}", e))?;
 
     fs::write("./.minigit/HEAD", "ref: refs/heads/main\n")
