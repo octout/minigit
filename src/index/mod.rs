@@ -6,15 +6,13 @@ use std::path::Path;
 pub struct IndexEntry {
     pub path: String,
     pub hash: String,
-    pub status: String,
 }
 
 impl IndexEntry {
-    pub fn new(path: &str, hash: &str, status: &str) -> Self {
+    pub fn new(path: &str, hash: &str) -> Self {
         Self {
             path: path.to_string(),
             hash: hash.to_string(),
-            status: status.to_string(),
         }
     }
 }
@@ -32,12 +30,8 @@ impl Index {
             for line in reader.lines() {
                 let line = line.unwrap();
                 let parts: Vec<&str> = line.split(' ').collect();
-                if parts.len() >= 3 {
-                    let mut path = parts[1].to_string();
-                    if path.starts_with("./") {
-                        path = path[2..].to_string();
-                    }
-                    entries.push(IndexEntry::new(&path, parts[2], parts[0]));
+                if parts.len() >= 2 {
+                    entries.push(IndexEntry::new(parts[0], parts[1]));
                 }
             }
         }
@@ -47,10 +41,7 @@ impl Index {
     pub fn save(&self) -> Result<(), String> {
         let mut content = String::new();
         for entry in &self.entries {
-            content.push_str(&format!(
-                "{} ./{} {}\n",
-                entry.status, entry.path, entry.hash
-            ));
+            content.push_str(&format!("{} {}\n", entry.path, entry.hash));
         }
         std::fs::write("./.minigit/index", content)
             .map_err(|e| format!("failed to write index: {}", e))
