@@ -76,18 +76,45 @@ pub fn execute() -> Result<(), String> {
     Ok(())
 }
 
+fn load_ignore_patterns() -> Vec<String> {
+    let mut patterns = vec![".git".to_string(), ".minigit".to_string()];
+    if let Ok(content) = fs::read_to_string(".gitignore") {
+        for line in content.lines() {
+            let line = line.trim();
+            if !line.is_empty() && !line.starts_with('#') {
+                let line = line.trim_start_matches('/');
+                patterns.push(line.to_string());
+            }
+        }
+    }
+    patterns
+}
+
+fn is_ignored(name: &str, patterns: &[String]) -> bool {
+    patterns.iter().any(|p| name == p)
+}
+
 fn list_working_files(dir: &Path) -> Result<Vec<String>, String> {
+    let patterns = load_ignore_patterns();
+    list_working_files_inner(dir, &patterns)
+}
+
+fn list_working_files_inner(dir: &Path, patterns: &[String]) -> Result<Vec<String>, String> {
     let mut file_path_list = Vec::new();
     let entries = fs::read_dir(dir).map_err(|e| format!("failed to read directory: {}", e))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("failed to read directory entry: {}", e))?;
         let path = entry.path();
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if is_ignored(name, patterns) {
+            continue;
+        }
         if path.is_file() {
             if let Some(rel_path) = path.strip_prefix(".").ok().and_then(|p| p.to_str()) {
                 file_path_list.push(rel_path.to_string());
             }
-        } else if path.is_dir() && path.file_name().and_then(|n| n.to_str()) != Some(".minigit") {
-            let sub_files = list_working_files(&path)?;
+        } else if path.is_dir() {
+            let sub_files = list_working_files_inner(&path, patterns)?;
             file_path_list.extend(sub_files);
         }
     }
