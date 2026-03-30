@@ -34,6 +34,17 @@ fn main() {
                 println!("正常にコミットされました。");
             })
         }
+        "branch" => {
+            let branch_names = &args[2..];
+            commands::branch::execute(branch_names)
+        }
+        "checkout" => {
+            if args.len() < 3 {
+                eprintln!("使い方: minigit checkout <ブランチ名>");
+                std::process::exit(1);
+            }
+            commands::checkout::execute(&args[2])
+        }
         "cat-file" => {
             if args.len() < 4 {
                 eprintln!("使い方: minigit cat-file <-t|-p> <ハッシュ>");
