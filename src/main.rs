@@ -1,6 +1,5 @@
-use std::env;
-
 use minigit::commands;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -16,11 +15,14 @@ fn main() {
         "status" => commands::status::execute(),
         "add" => {
             if args.len() < 3 {
-                eprintln!("使い方: minigit add <ファイルパス>");
+                eprintln!("使い方: minigit add <ファイルパス>...");
                 std::process::exit(1);
             }
-            commands::add::execute(&args[2]).map(|_| {
-                println!("正常にインデックスに追加されました: {}", &args[2]);
+            let paths = &args[2..];
+            commands::add::execute(paths).map(|_| {
+                for path in paths {
+                    println!("正常にインデックスに追加されました: {}", path);
+                }
             })
         }
         "commit" => {
