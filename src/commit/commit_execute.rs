@@ -2,13 +2,14 @@ use std::fs;
 
 use super::tree;
 use crate::common::git_object;
+use crate::common::helper;
 use crate::common::index_readed;
 
 pub fn commit(message: &String) -> Result<String, String> {
     let tree_hash = create_tree_object()?;
     let commit_hash = create_commit_object(&tree_hash, message)?;
 
-    let head_ref_path = resolve_head_ref()?;
+    let head_ref_path = helper::resolve_head_ref()?;
     fs::write(&head_ref_path, &commit_hash)
         .map_err(|e| format!("failed to update HEAD ref: {}", e))?;
     return Ok("".to_string());
@@ -31,7 +32,7 @@ fn create_commit_object(tree_hash: &String, message: &String) -> Result<String, 
     let mut body: Vec<u8> = Vec::new();
     body.extend(format!("tree {}\n", tree_hash).as_bytes());
 
-    let parent_commit = get_parent_commit_hash(&resolve_head_ref().unwrap());
+    let parent_commit = get_parent_commit_hash(&helper::resolve_head_ref().unwrap());
     if let Some(parent_commit) = parent_commit {
         body.extend(format!("parent {}\n", parent_commit).as_bytes());
     }
@@ -46,18 +47,6 @@ fn create_commit_object(tree_hash: &String, message: &String) -> Result<String, 
     let hash_hex = git_object::write_object(&commit_content)?;
 
     return Ok(hash_hex);
-}
-
-fn resolve_head_ref() -> Result<String, String> {
-    let head_path = "./.minigit/HEAD";
-    let head_content =
-        fs::read_to_string(head_path).map_err(|e| format!("failed to read HEAD file: {}", e))?;
-    let head_ref = head_content.trim();
-    if head_ref.starts_with("ref: ") {
-        let ref_path = format!("./.minigit/{}", &head_ref[5..]);
-        return Ok(ref_path);
-    }
-    return Err("invalid HEAD format".to_string());
 }
 
 fn get_parent_commit_hash(ref_path: &String) -> Option<String> {

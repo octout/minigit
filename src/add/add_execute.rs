@@ -1,6 +1,7 @@
 use std::fs;
 
 use crate::common::git_object;
+use crate::common::helper;
 use crate::common::index_readed;
 
 pub fn add_file(path: &str) -> Result<String, String> {
@@ -18,12 +19,37 @@ pub fn add_index(path: &str, hash_hex: &String) -> Result<(), String> {
         Ok(vec) => vec,
         Err(_) => Vec::new(),
     };
+    let tree_entries = match helper::resolve_head_commit_hash() {
+        Ok(commit_hash) => {
+            let tree_hash = helper::get_tree_hash_from_commit(&commit_hash)?;
+            helper::collect_tree_entries(&tree_hash)?
+        }
+        Err(_) => Vec::new(),
+    };
+
     match index_vec.iter_mut().find(|idx| idx.path == path) {
         Some(index) => {
             index.hex = hash_hex.clone();
+            index.status = if tree_entries
+                .iter()
+                .any(|(entry_path, _)| entry_path == path)
+            {
+                "change"
+            } else {
+                "create"
+            }
+            .to_string();
         }
         None => {
-            index_vec.push(index_readed::IndexReaded::new(path, hash_hex, "create"));
+            let status = if tree_entries
+                .iter()
+                .any(|(entry_path, _)| entry_path == path)
+            {
+                "change"
+            } else {
+                "create"
+            };
+            index_vec.push(index_readed::IndexReaded::new(path, hash_hex, status));
         }
     }
     index_readed::write_index(&index_vec).map_err(|e| format!("failed to write index: {}", e))?;
