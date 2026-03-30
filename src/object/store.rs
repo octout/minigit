@@ -74,3 +74,14 @@ pub fn hex_to_bytes(hex: &str) -> Vec<u8> {
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
+
+pub fn hash(obj: &impl GitObject) -> String {
+    let body = obj.serialize_body();
+    let header = format!("{} {}\0", obj.object_type(), body.len());
+    let mut data = header.into_bytes();
+    data.extend(body);
+    Sha1::digest(&data)
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect()
+}
